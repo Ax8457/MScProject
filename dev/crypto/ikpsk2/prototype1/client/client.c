@@ -243,32 +243,4 @@ end_loop:
 	close(fs2c_fd);
 }
 
-/*
-//send msg1
-void ikpsk2_send_msg1(int fd, ikpsk2_msg1 *msg){
-    // On passe l'adresse du message et sa taille en octets
-    ssize_t bytes_written = write(fd, msg, sizeof(ikpsk2_msg1));
-    //handle error
-    if (bytes_written < 0) {
-        printf("[ERROR] Value of errno: %d\n", errno);
-        perror("[x] Failed to send msg1");
-    } else {
-        printf("[==>] sending msg1 (%zd written to pipe)\n", bytes_written);
-    }
-}
-*/
 
-/*
-//send msg1
-void ikpsk2_send_msg1(int fd, ikpsk2_msg1 *msg){
-    // On passe l'adresse du message et sa taille en octets
-    ssize_t bytes_written = write(fd, msg, sizeof(ikpsk2_msg1));
-    //handle error
-    if (bytes_written < 0) {
-        printf("[ERROR] Value of errno: %d\n", errno);
-        perror("[x] Failed to send msg1");
-    } else {
-        printf("[==>] sending msg1 (%zd written to pipe)\n", bytes_written);
-    }
-}
-*/

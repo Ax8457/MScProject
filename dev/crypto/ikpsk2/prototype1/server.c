@@ -359,10 +359,10 @@ void start_server(ikpsk2_msg1 *i_m, noise_handshake *handshake, uint8_t *key, no
 		if (handshake->state == COMM && (fds[1].revents & POLLIN)) {
 			char input_buffer[512];
 			if (fgets(input_buffer, sizeof(input_buffer), stdin) != NULL) {
-				input_buffer[strcspn(input_buffer, "\n")] = 0; // Nettoyer le saut de ligne
+				input_buffer[strcspn(input_buffer, "\n")] = 0; 
 				if (strlen(input_buffer) > 0) {
 					uint8_t encrypted_packet[1024];
-					uint8_t dummy_hash[NOISE_HASH_LEN] = {0}; // Buffer de 32 octets vide
+					uint8_t dummy_hash[NOISE_HASH_LEN] = {0}; 
 					//encrypt message
 					message_encrypt(encrypted_packet, (uint8_t *)input_buffer, strlen(input_buffer) + 1, transport_key_encrypt, dummy_hash);
 					//write pipe
