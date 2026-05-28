@@ -25,26 +25,24 @@ uint8_t handshake_init_chaining_key[NOISE_HASH_LEN];
 /*
 	Generate keypairs (x25519) with libsodium 
 */
-void generate_static_keys(noise_keypair *n_k, noise_peer *n_p){
+void generate_ephemeral_secret(uint8_t ephemeral_private[NOISE_PUBLIC_KEY_LEN]){
 	// /!\ Error handling
-	if (crypto_box_seed_keypair(n_k->public_key, n_k->private_key, n_p->seed) < 0){
-		printf("[ERROR] Value of errno: %d\n", errno);
-        	perror("[x] Failed to generate x25519 keypair");
-	}
-	//DEBUG
-	//printf("Key pair:\n\t Pubkey: %s \n\t Privkey: %s\n",n_k->public, n_k->private);
-	//DEBUG
+	randombytes_buf(ephemeral_private, NOISE_PUBLIC_KEY_LEN);
 }
-void generate_ephemeral_keys(noise_keypair *n_k){
-	// /!\ Error handling
-	if (crypto_box_keypair(n_k->public_key, n_k->private_key) < 0){
-		printf("[ERROR] Value of errno: %d\n", errno);
-        	perror("[x] Failed to generate x25519 keypair");
+void generate_public(uint8_t pubkey[NOISE_PUBLIC_KEY_LEN], uint8_t privkey[NOISE_PUBLIC_KEY_LEN]){
+	if (crypto_scalarmult_base(pubkey, privkey) < 0){
+		perror("[x]error dh pubkey computation \n");
 	}
-	//DEBUG
-	//printf("Key pair:\n\t Pubkey: %s \n\t Privkey: %s\n",n_k->public, n_k->private);
-	//DEBUG
 }
+/*
+	Set static identity
+*/
+void set_static_identity(struct noise_static_identity *static_identity, const uint8_t private_key[NOISE_PUBLIC_KEY_LEN])
+{
+	memcpy(static_identity->static_private, private_key, NOISE_PUBLIC_KEY_LEN);
+	//complete
+}
+
 /*
 	Init function
 */
@@ -61,12 +59,12 @@ void ikpsk2_noise_init(void)
 	// /!\ order of parameters is different in user space blake2s(NULL, 0, handshake_name, sizeof(handshake_name),handshake_init_chaining_key, NOISE_HASH_LEN); 
 		
 	//DEBUG
-	printf("Handshake name (seed): ");
+	printf("[DEBUG] Handshake name (seed): ");
 	for (int i = 0; i < sizeof(handshake_name); i++) {
     		printf("%02x", handshake_name[i]);
 	}
 	printf("\n");
-	printf("identifier name (seed): ");
+	printf("[DEBUG] identifier name (seed): ");
 	for (int i = 0; i < sizeof(identifier_name); i++) {
     		printf("%02x", identifier_name[i]);
 	}
@@ -367,4 +365,5 @@ void derive_keys(uint8_t first_key[NOISE_SYMMETRIC_KEY_LEN], uint8_t second_key[
 		prk
 	);
 }
+
 

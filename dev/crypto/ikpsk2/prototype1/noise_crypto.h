@@ -46,6 +46,7 @@ typedef struct noise_handshake {
 	enum noise_handshake_state state;
 	uint8_t last_timestamp[NOISE_TIMESTAMP_LEN];
 	uint8_t psk[NOISE_SYMMETRIC_KEY_LEN];
+	
 }noise_handshake; 
 //curve25519 keys struct
 typedef struct noise_keypair {
