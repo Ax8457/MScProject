@@ -110,7 +110,11 @@ void init_handshake(uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HAS
 	/!\ HKDF : only one expansion
 */
 //e
-void message_e(uint8_t ephemeral_pubkey_initiator[NOISE_PUBLIC_KEY_LEN],uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN]){
+void message_e(uint8_t dst[NOISE_PUBLIC_KEY_LEN], uint8_t ephemeral_pubkey_initiator[NOISE_PUBLIC_KEY_LEN],uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN]){
+	
+	if (ephemeral_pubkey_initiator != dst){
+		memcpy(dst,ephemeral_pubkey_initiator, NOISE_PUBLIC_KEY_LEN);
+	}
 	//C1
 	unsigned char prk[crypto_kdf_hkdf_sha256_KEYBYTES];
 	//HKDF extract
@@ -118,7 +122,7 @@ void message_e(uint8_t ephemeral_pubkey_initiator[NOISE_PUBLIC_KEY_LEN],uint8_t 
 		prk, 
 		chaining_key, 
 		NOISE_HASH_LEN,              
-		ephemeral_pubkey_initiator, 
+		dst, 
 		NOISE_PUBLIC_KEY_LEN
 	);
 	//HKDF expand
@@ -129,7 +133,7 @@ void message_e(uint8_t ephemeral_pubkey_initiator[NOISE_PUBLIC_KEY_LEN],uint8_t 
 		14,                        
 		prk                           
 	);	
-	update_transcript(hash, ephemeral_pubkey_initiator, NOISE_PUBLIC_KEY_LEN); //H2
+	update_transcript(hash, dst, NOISE_PUBLIC_KEY_LEN); //H2
 }
 
 /*
@@ -295,9 +299,10 @@ void message_se(uint8_t ephemeral_private_key[NOISE_PUBLIC_KEY_LEN], uint8_t rem
 	
 }
 //psk
-void mix_psk(uint8_t psk[NOISE_SYMMETRIC_KEY_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t pi[NOISE_SYMMETRIC_KEY_LEN], uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN])
+void mix_psk(uint8_t psk[NOISE_SYMMETRIC_KEY_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN])
 {
 	uint8_t prk[crypto_kdf_hkdf_sha256_KEYBYTES];
+	uint8_t pi[NOISE_HASH_LEN];
 	//expand 
 	crypto_kdf_hkdf_sha256_extract(
 		prk,
@@ -317,7 +322,7 @@ void mix_psk(uint8_t psk[NOISE_SYMMETRIC_KEY_LEN], uint8_t key[NOISE_SYMMETRIC_K
 	//extract 2 => pi
 	crypto_kdf_hkdf_sha256_expand(
 		pi,
-		NOISE_SYMMETRIC_KEY_LEN,
+		NOISE_HASH_LEN,
 		"NFSv4_noise_pi",
 		14,
 		prk

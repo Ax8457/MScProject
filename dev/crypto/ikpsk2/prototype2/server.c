@@ -100,23 +100,16 @@ void start_server(struct noise_peer *peer) {
                         goto end_loop;
                     }
                     printf("message1 received.\n");
+                    //consume initiation
+                    handshake_consume_initiation(m1, peer);
+
+                    printf("message1 consumed.\n");
+                    printf ("state updated.\n");
+
+                    //create response 
+                    handshake_create_response(m2, peer);
+                    printf("response created.\n");
                     break;
-
-                    /* // noise_handshake_consume_initiation(m1, &peer->handshake);
-                    printf("[*] Message 1 consumed successfully.\n");
-
-                    // noise_handshake_create_response(m2, &peer->handshake);
-                    printf("[*] Handshake Response (Message 2) created.\n");
-
-                    if (write(fs2c_fd, m2, sizeof(struct ikpsk2_msg2)) > 0) {
-                        printf("[*] Handshake Response sent to client.\n");
-                        peer->handshake.state = COMM; 
-                        printf("[*] Server switching to COMM state (Secure Tunnel Established).\n");
-                    } else {
-                        perror("[x] Failed to send Handshake Response");
-                        goto end_loop;
-                    }
-                    break; */
                 }
 
                 case COMM: {

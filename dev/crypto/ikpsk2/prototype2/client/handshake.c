@@ -59,7 +59,13 @@ void noise_handshake_create_initiation(struct ikpsk2_msg1 *m1, struct noise_hand
 	/*
 	*	H1 = hash(H0 || Static_pubkey_responder)
 	*/
+
 	init_handshake(handshake->chaining_key, handshake->hash_transcript, handshake->remote_static);
+	printf("[DEBUG] Hash transcript updated (H1): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->hash_transcript[i]);
+	}
+	printf("\n");
 	
 	/*
 		e : C1 & H2
@@ -71,14 +77,31 @@ void noise_handshake_create_initiation(struct ikpsk2_msg1 *m1, struct noise_hand
 	generate_ephemeral_secret(handshake->ephemeral_private);
 	generate_public(m1->unencrypted_ephemeral, handshake->ephemeral_private);
 	//hkdf & hash update
-	message_e(m1->unencrypted_ephemeral, handshake->chaining_key, handshake->hash_transcript);
+	message_e(m1->unencrypted_ephemeral,m1->unencrypted_ephemeral, handshake->chaining_key, handshake->hash_transcript);
 	
+	printf("[DEBUG] Chaining key updated (C1): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->chaining_key[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Hash transcript updated (H2): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->hash_transcript[i]);
+	}
+	printf("\n");
+
 	/*
 		es: C2 & k1
 		C2 || k1 = hkdf2(C1, dh(E_priv_i,S_pub_r))
 	*/
 	mix_dh(handshake->chaining_key, key , handshake->ephemeral_private, handshake->remote_static);
 
+	printf("[DEBUG] Chaining key updated (C2): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->chaining_key[i]);
+	}
+	printf("\n");
+	
 	/*
 		s: timestamps encrypt & H3
 		S pub encrypted = aenc(k1,0,S_pub_i,H2)
@@ -86,6 +109,16 @@ void noise_handshake_create_initiation(struct ikpsk2_msg1 *m1, struct noise_hand
 	*/
 	message_encrypt(m1->encrypted_static, handshake->static_identity->static_public, NOISE_PUBLIC_KEY_LEN ,key, handshake->hash_transcript);
 	
+	printf("[DEBUG] Hash transcript updated (H3): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Static pubkey encrypted (S Pub enc): ");
+	for (int i = 0; i < NOISE_PUBLIC_KEY_LEN + crypto_aead_chacha20poly1305_ABYTES; i++) {
+    	printf("%02x", m1->encrypted_static[i]);
+	}
+	printf("\n");
 
 	/*
 		ss: C3 & K2
@@ -93,12 +126,28 @@ void noise_handshake_create_initiation(struct ikpsk2_msg1 *m1, struct noise_hand
 		/!\ in the future use pre computed static static instead
 	*/
 	mix_dh(handshake->chaining_key, key, handshake->static_identity->static_private, handshake->remote_static);
+	printf("[DEBUG] Chaining key updated (C3): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->chaining_key[i]);
+	}
+	printf("\n");
 
 	/*
 		encrypte ts & H4
 	*/
 	get_userspace_timestamp(timestamp);
 	message_encrypt(m1->encrypted_timestamp, timestamp, NOISE_TIMESTAMP_LEN, key, handshake->hash_transcript);
+
+	printf("[DEBUG] Hash transcript updated (H4): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", handshake->hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] TimeStamp encrypted (TS enc): ");
+	for (int i = 0; i < NOISE_TIMESTAMP_LEN + crypto_aead_chacha20poly1305_ABYTES; i++) {
+    	printf("%02x", m1->encrypted_timestamp[i]);
+	}
+	printf("\n");
 
 	//update state
 	/*
@@ -107,33 +156,165 @@ void noise_handshake_create_initiation(struct ikpsk2_msg1 *m1, struct noise_hand
 	//handshake->state = HANDSHAKE_CREATED_INITIATION;
 }
 
-/*
 
-void handshake_consume_initiation(struct message_handshake_initiation *src, struct wg_device *wg)
+
+void handshake_consume_initiation(struct ikpsk2_msg1 *m1, struct noise_peer *peer)
 {
-	struct wg_peer *peer = NULL, *ret_peer = NULL;
-	struct noise_handshake *handshake;
-	bool replay_attack, flood_attack;
-	u8 key[NOISE_SYMMETRIC_KEY_LEN];
-	u8 chaining_key[NOISE_HASH_LEN];
-	u8 hash[NOISE_HASH_LEN];
-	u8 s[NOISE_PUBLIC_KEY_LEN];
-	u8 e[NOISE_PUBLIC_KEY_LEN];
-	u8 t[NOISE_TIMESTAMP_LEN];
-	u64 initiation_consumption;
+	//for the moment single client model
+	struct noise_handshake *handshake = &peer->handshake;
+
+	uint8_t chaining_key[NOISE_HASH_LEN];
+	uint8_t hash_transcript[NOISE_HASH_LEN];
+	uint8_t s[NOISE_PUBLIC_KEY_LEN];
+	uint8_t e[NOISE_PUBLIC_KEY_LEN];
+	uint8_t t[NOISE_TIMESTAMP_LEN];
+	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
+	
+	//debug 	
+	printf("[DEBUG] Received message: \n");
+	printf("[DEBUG] TimeStamp encrypted (TS enc): ");
+	for (int i = 0; i < NOISE_TIMESTAMP_LEN + crypto_aead_chacha20poly1305_ABYTES; i++) {
+    	printf("%02x", m1->encrypted_timestamp[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Static pubkey encrypted (S Pub enc): ");
+	for (int i = 0; i < NOISE_PUBLIC_KEY_LEN + crypto_aead_chacha20poly1305_ABYTES; i++) {
+    	printf("%02x", m1->encrypted_static[i]);
+	}
+	printf("\n");
+	
+	/*
+		H1
+	*/
+
+	printf("[DEBUG] Static pubkey: ");
+	for (int i = 0; i < NOISE_PUBLIC_KEY_LEN ; i++) {
+    	printf("%02x", peer->handshake.static_identity->static_public[i]);
+	}
+	printf("\n");
+	init_handshake(chaining_key, hash_transcript, peer->handshake.static_identity->static_public);
+	printf("[DEBUG] Hash transcript updated (H1): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", hash_transcript[i]);
+	}
+	printf("\n");
+
+	/*
+		e : C1 & H2
+	*/
+	message_e(e,m1->unencrypted_ephemeral, chaining_key, hash_transcript );
+
+	/*
+		es: C2 & K1
+	*/
+	mix_dh(chaining_key, key, peer->handshake.static_identity->static_private,e);
+
+	/*
+		dec S_pub_i & H3
+	*/
+	message_decrypt(s, m1->encrypted_static, NOISE_PUBLIC_KEY_LEN + crypto_aead_chacha20poly1305_ABYTES, key, hash_transcript);
+
+	// part missing => look up in hash table in multiple client, for the moment -> single client
+	/*
+		ss : C3 + K2
+	*/
+	mix_dh(chaining_key,key,peer->handshake.static_identity->static_private, s);
+
+	/*
+		t: dec timestamp + h4
+	*/
+	message_decrypt(t, m1->encrypted_timestamp, NOISE_TIMESTAMP_LEN + crypto_aead_chacha20poly1305_ABYTES,key,hash_transcript);
+
+	/*
+		Update peer 
+	*/
+	memcpy(handshake->remote_ephemeral, e, NOISE_PUBLIC_KEY_LEN);
+    memcpy(handshake->remote_static, s, NOISE_PUBLIC_KEY_LEN);
+    memcpy(handshake->latest_timestamp, t, NOISE_TIMESTAMP_LEN);
+    memcpy(handshake->chaining_key, chaining_key, NOISE_HASH_LEN);
+    memcpy(handshake->hash_transcript, hash_transcript, NOISE_HASH_LEN);
+
+	handshake->state = HANDSHAKE_CONSUMED_INITIATION;
+
+	printf("[DEBUG] Hash transcript updated (H4): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Chaining key updated (C3): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+
+
+}	
+
+void handshake_create_response(struct ikpsk2_msg2 *m2, struct noise_peer *peer)
+{
+	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
+	
+	/*
+		e: generate ephemerals + C4 & H5
+	*/
+	generate_ephemeral_secret(peer->handshake.ephemeral_private);
+	generate_public(m2->ephemeral_public_key, peer->handshake.ephemeral_private);
+
+	message_e(m2->ephemeral_public_key, m2->ephemeral_public_key, peer->handshake.chaining_key, peer->handshake.hash_transcript);
+
+	printf("[DEBUG] Hash transcript updated (H5): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Chaining key updated (C4): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		ee : C5
+	*/
+
+	message_ee(peer->handshake.remote_ephemeral, peer->handshake.ephemeral_private,peer->handshake.chaining_key);
+	printf("[DEBUG] Chaining key updated (C5): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		se : C6
+	*/
+	message_se(peer->handshake.ephemeral_private, peer->handshake.remote_static,peer->handshake.chaining_key);
+	printf("[DEBUG] Chaining key updated (C6): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		psk
+	*/
+	mix_psk(peer->handshake.psk, key, peer->handshake.chaining_key, peer->handshake.hash_transcript);
+	printf("[DEBUG] Chaining key updated (C7): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.hash_transcript[i]);
+	}
+	printf("\n");
+
+	printf("[DEBUG] Hash transcript updated (H6): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.hash_transcript[i]);
+	}
+	printf("\n");
+
+	message_encrypt(m2->encrypted_empty, (uint8_t *)"", 0, key, peer->handshake.hash_transcript);
 
 }
 
-*/
-
 /*
-
-bool handshake_create_response(struct message_handshake_response *dst,	struct noise_handshake *handshake)
-{
-	u8 key[NOISE_SYMMETRIC_KEY_LEN];
-	bool ret = false;
-
-}
 
 struct wg_peer * wg_noise_handshake_consume_response(struct message_handshake_response *src, struct wg_device *wg)
 {
