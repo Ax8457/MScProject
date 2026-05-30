@@ -278,7 +278,7 @@ void message_se(uint8_t ephemeral_private_key[NOISE_PUBLIC_KEY_LEN], uint8_t rem
 	//diffie hellman share secret
 	if (crypto_scalarmult(dh_calculation, ephemeral_private_key, remote_static) < 0){
 		printf("[ERROR] Value of errno: %d\n", errno);
-        	perror("[x] Failed DH computation");
+        perror("[x] Failed DH computation");
 	}
 	//HKDF extract
 	crypto_kdf_hkdf_sha256_extract(

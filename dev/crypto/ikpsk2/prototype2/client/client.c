@@ -28,6 +28,7 @@
 void bind_server(struct noise_peer *peer){
 	//vars to handle messages
 	struct ikpsk2_msg1 *m1 = calloc(1, sizeof(struct ikpsk2_msg1));
+	struct ikpsk2_msg2 *m2 = calloc(1, sizeof(struct ikpsk2_msg2));
 	//pipes
 	int fc2s_fd = open("/tmp/" FIFO_C2S, O_WRONLY);    
 	int fs2c_fd = open("/tmp/" FIFO_S2C, O_RDONLY);
@@ -65,28 +66,87 @@ void bind_server(struct noise_peer *peer){
 
 	//process handshake
 	while(1) {
-		//dependeing on the state => look at 2 pipes
-		int nfds = (peer->handshake.state == COMM) ? 2 : 1;
-        int ret = poll(fds, nfds, -1); //while nothing appends => block
-        if (ret < 0) {
-            printf("[ERROR] Value of errno: %d\n", errno);
-            perror("[x] Poll error");
-            break;
-        }
-		//handle different states of the handshake
-		if (fds[0].revents & POLLIN) {
-			switch (peer->handshake.state) {
-
-				case HANDSHAKE_CREATED_INITIATION: {}
-
-				case COMM: {}
-
-				default:
-					printf("[WARNING] Unexpected packet or state condition (%d)\n", peer->handshake.state);
-					break;
+		if (peer->handshake.state == HANDSHAKE_CREATED_INITIATION || peer->handshake.state == COMM) {
+			int nfds = (peer->handshake.state == COMM) ? 2 : 1;
+			fds[0].revents = 0;
+			fds[1].revents = 0;
+			
+			int ret = poll(fds, nfds, -1);
+			if (ret < 0) {
+				printf("[ERROR] Value of errno: %d\n", errno);
+				perror("[x] Poll error");
+				break;
 			}
 		}
+
+		switch (peer->handshake.state) {
+
+			case HANDSHAKE_CREATED_INITIATION: {
+				if (fds[0].revents & POLLIN) {
+					ssize_t bytes_read = read(fs2c_fd, m2, sizeof(struct ikpsk2_msg2));
+					if (bytes_read <= 0) {
+						perror("[x] Failed to read Message 2 or server disconnected");
+						goto end_loop;
+					}
+					printf("message2 received.\n");
+
+					handshake_consume_response(m2, peer);
+
+					printf("message2 consumed.\n");
+					printf("state updated.\n");
+					
+					peer->handshake.state = HANDSHAKE_CONSUMED_RESPONSE;
+				}
+				break;
+			}
+
+			case HANDSHAKE_CONSUMED_RESPONSE: {
+				begin_session(peer);
+				peer->handshake.state = COMM;
+				printf("Client > ");
+				fflush(stdout);
+				break;
+			}
+
+			case COMM: {
+				if (fds[0].revents & POLLIN) {
+					uint8_t encrypted_packet[1024];
+					ssize_t bytes_read = read(fs2c_fd, encrypted_packet, sizeof(encrypted_packet));
+					if (bytes_read > 0) {
+						uint8_t decrypted_message[1024];
+						uint8_t dummy_hash[NOISE_HASH_LEN] = {0};
+						message_decrypt(decrypted_message, encrypted_packet, bytes_read, peer->symmetric_keys.receiving_key, dummy_hash);
+						printf("\n[Server] %s\nClient > ", decrypted_message);
+						fflush(stdout);
+					} else if (bytes_read == 0) {
+						printf("\n[*] Server closed the pipe connection.\n");
+						goto end_loop;
+					}
+				}
+
+				if (fds[1].revents & POLLIN) {
+					char input_buffer[512];
+					if (fgets(input_buffer, sizeof(input_buffer), stdin) != NULL) {
+						input_buffer[strcspn(input_buffer, "\n")] = 0;
+						if (strlen(input_buffer) > 0) {
+							uint8_t encrypted_packet[1024];
+							uint8_t dummy_hash2[NOISE_HASH_LEN] = {0};
+							message_encrypt(encrypted_packet, (uint8_t *)input_buffer, strlen(input_buffer) + 1, peer->symmetric_keys.sending_key, dummy_hash2);
+							write(fc2s_fd, encrypted_packet, strlen(input_buffer) + 1 + crypto_aead_chacha20poly1305_ABYTES);
+						}
+						printf("Client > ");
+						fflush(stdout);
+					}
+				}
+				break;
+			}
+
+			default:
+				printf("[WARNING] Unexpected packet or state condition (%d)\n", peer->handshake.state);
+				goto end_loop;
+		}
 	}
+end_loop:
 	close(fc2s_fd);
 	close(fs2c_fd);
 }

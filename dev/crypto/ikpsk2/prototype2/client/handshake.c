@@ -300,7 +300,7 @@ void handshake_create_response(struct ikpsk2_msg2 *m2, struct noise_peer *peer)
 	mix_psk(peer->handshake.psk, key, peer->handshake.chaining_key, peer->handshake.hash_transcript);
 	printf("[DEBUG] Chaining key updated (C7): ");
 	for (int i = 0; i < NOISE_HASH_LEN; i++) {
-    	printf("%02x", peer->handshake.hash_transcript[i]);
+    	printf("%02x", peer->handshake.chaining_key[i]);
 	}
 	printf("\n");
 
@@ -312,30 +312,126 @@ void handshake_create_response(struct ikpsk2_msg2 *m2, struct noise_peer *peer)
 
 	message_encrypt(m2->encrypted_empty, (uint8_t *)"", 0, key, peer->handshake.hash_transcript);
 
+	printf("[DEBUG] Hash transcript updated (H7): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.hash_transcript[i]);
+	}
+	printf("\n");
+
+	//update state
+	peer->handshake.state = HANDSHAKE_CREATED_RESPONSE;
+
+}
+
+void handshake_consume_response(struct ikpsk2_msg2 *m2, struct noise_peer *peer)
+{
+	struct noise_handshake *handshake = &peer->handshake; //for the moment no index table
+	uint8_t key[NOISE_SYMMETRIC_KEY_LEN];
+	uint8_t hash_transcript[NOISE_HASH_LEN];
+	uint8_t chaining_key[NOISE_HASH_LEN];
+	uint8_t e[NOISE_PUBLIC_KEY_LEN];
+	uint8_t ephemeral_private[NOISE_PUBLIC_KEY_LEN];
+	uint8_t preshared_key[NOISE_SYMMETRIC_KEY_LEN];
+	uint8_t empty[0];
+
+	/*
+		Complete handshake temp
+	*/
+	memcpy(hash_transcript, handshake->hash_transcript, NOISE_HASH_LEN);
+	memcpy(chaining_key, handshake->chaining_key, NOISE_HASH_LEN);
+	memcpy(ephemeral_private, handshake->ephemeral_private, NOISE_PUBLIC_KEY_LEN);
+	memcpy(preshared_key, handshake->psk, NOISE_SYMMETRIC_KEY_LEN);
+
+	/*
+		e : C4 + H5
+	*/
+	message_e(e,m2->ephemeral_public_key, chaining_key, hash_transcript);
+	printf("[DEBUG] Hash transcript updated (H5): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Chaining key updated (C4): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+	/*
+		ee : C5
+	*/
+	message_ee(e, ephemeral_private, chaining_key);
+	printf("[DEBUG] Chaining key updated (C5): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		se: C6
+	*/
+	message_se(handshake->static_identity->static_private, e, chaining_key);
+	printf("[DEBUG] Chaining key updated (C6): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		psk : C7, pi k3 & H6 + H7
+	*/
+	mix_psk(preshared_key,key,chaining_key,hash_transcript);
+	printf("[DEBUG] Chaining key updated (C7): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Hash transcript updated (H6): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", peer->handshake.hash_transcript[i]);
+	}
+	printf("\n");
+
+	/*
+		decrypt empty + H7
+	*/
+	message_decrypt(empty,m2->encrypted_empty,crypto_aead_chacha20poly1305_ABYTES,key,hash_transcript);
+
+	printf("[DEBUG] Hash transcript updated (H7): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", hash_transcript[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Chaining key updated (C7): ");
+	for (int i = 0; i < NOISE_HASH_LEN; i++) {
+    	printf("%02x", chaining_key[i]);
+	}
+	printf("\n");
+
+	/*
+		copy everything to peer
+	*/
+	memcpy(handshake->hash_transcript, hash_transcript, NOISE_HASH_LEN);
+	memcpy(handshake->chaining_key, chaining_key, NOISE_HASH_LEN);
+	
+	//update state 
+	handshake->state = HANDSHAKE_CONSUMED_RESPONSE;
 }
 
 /*
-
-struct wg_peer * wg_noise_handshake_consume_response(struct message_handshake_response *src, struct wg_device *wg)
-{
-	enum noise_handshake_state state = HANDSHAKE_ZEROED;
-	struct wg_peer *peer = NULL, *ret_peer = NULL;
-	struct noise_handshake *handshake;
-	u8 key[NOISE_SYMMETRIC_KEY_LEN];
-	u8 hash[NOISE_HASH_LEN];
-	u8 chaining_key[NOISE_HASH_LEN];
-	u8 e[NOISE_PUBLIC_KEY_LEN];
-	u8 ephemeral_private[NOISE_PUBLIC_KEY_LEN];
-	u8 static_private[NOISE_PUBLIC_KEY_LEN];
-	u8 preshared_key[NOISE_SYMMETRIC_KEY_LEN];
-
-}
-
-bool wg_noise_handshake_begin_session(struct noise_handshake *handshake,
-				      struct noise_keypairs *keypairs)
-{
-	struct noise_keypair *new_keypair;
-	bool ret = false;
-}
-
+	Derive keys and begin session
 */
+void begin_session(struct noise_peer *peer)
+{
+	derive_keys(peer->symmetric_keys.receiving_key, peer->symmetric_keys.sending_key, peer->handshake.chaining_key);
+	printf("[DEBUG] Receiving key: ");
+	for (int i = 0; i < NOISE_SYMMETRIC_KEY_LEN; i++) {
+    	printf("%02x", peer->symmetric_keys.receiving_key[i]);
+	}
+	printf("\n");
+	printf("[DEBUG] Sending key: ");
+	for (int i = 0; i < NOISE_SYMMETRIC_KEY_LEN; i++) {
+    	printf("%02x", peer->symmetric_keys.sending_key[i]);
+	}
+	printf("\n");
+}
+

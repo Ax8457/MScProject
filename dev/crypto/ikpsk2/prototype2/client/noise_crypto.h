@@ -115,7 +115,6 @@ extern void message_e(uint8_t dst[NOISE_PUBLIC_KEY_LEN], uint8_t ephemeral_pubke
 extern void mix_dh(uint8_t chaining_key[NOISE_HASH_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t private_key[NOISE_PUBLIC_KEY_LEN], uint8_t public_key[NOISE_PUBLIC_KEY_LEN]);
 extern void message_encrypt(uint8_t *dst_ciphertext, uint8_t *src_plaintext, size_t src_len, uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t hash[NOISE_HASH_LEN]);
 extern void get_userspace_timestamp(uint8_t output[NOISE_TIMESTAMP_LEN]);
-
 extern void message_decrypt(uint8_t *dst_plaintext, uint8_t *src_ciphertext, size_t src_len, uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t hash[NOISE_HASH_LEN]);
 extern void message_ee(uint8_t ephemeral_public[NOISE_PUBLIC_KEY_LEN], uint8_t ephemeral_private[NOISE_PUBLIC_KEY_LEN], uint8_t chaining_key[NOISE_HASH_LEN]);
 extern void message_se(uint8_t ephemeral_private_key[NOISE_PUBLIC_KEY_LEN], uint8_t remote_static[NOISE_PUBLIC_KEY_LEN], uint8_t chaining_key[NOISE_HASH_LEN]);
