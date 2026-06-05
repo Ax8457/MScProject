@@ -246,7 +246,6 @@ void get_userspace_timestamp(uint8_t output[NOISE_TIMESTAMP_LEN])
 void message_ee(uint8_t ephemeral_public[NOISE_PUBLIC_KEY_LEN], uint8_t ephemeral_private[NOISE_PUBLIC_KEY_LEN] ,uint8_t chaining_key[NOISE_HASH_LEN]){
 	//C5
 	uint8_t dh_calculation[NOISE_PUBLIC_KEY_LEN];
-	uint8_t prk[crypto_kdf_hkdf_sha256_KEYBYTES];
 	//diffie hellman share secret
 	if (crypto_scalarmult(dh_calculation, ephemeral_private, ephemeral_public) < 0){
 		printf("[ERROR] Value of errno: %d\n", errno);
@@ -295,8 +294,7 @@ void message_se(uint8_t ephemeral_private_key[NOISE_PUBLIC_KEY_LEN], uint8_t rem
 		"NFSv4_noise_C6", 
 		14,                        
 		prk                           
-	);	
-	
+	);		
 }
 //psk
 void mix_psk(uint8_t psk[NOISE_SYMMETRIC_KEY_LEN], uint8_t key[NOISE_SYMMETRIC_KEY_LEN], uint8_t chaining_key[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN])

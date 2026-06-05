@@ -1,0 +1,1 @@
+cmd_/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto.o := ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments   -r -o /home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto.o @/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto.mod 

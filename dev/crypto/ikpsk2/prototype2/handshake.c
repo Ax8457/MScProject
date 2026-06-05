@@ -20,10 +20,9 @@ void load_conf(const char *filename, uint8_t local_priv[NOISE_PUBLIC_KEY_LEN], u
     size_t len;
 
     while (fgets(line, sizeof(line), fp)) {
-        // CORRECTION DU SSCANF : On isole proprement la clé sans récupérer l'espace avant le '='
+
         if (sscanf(line, " %63[^= ] = %127s", key, val) == 2) {
             
-            // Nettoyage des caractères de fin de ligne et du padding '=' s'il est tronqué
             val[strcspn(val, "\r\n")] = 0;
 
             if (strcasecmp(key, "PrivateKey") == 0) {
