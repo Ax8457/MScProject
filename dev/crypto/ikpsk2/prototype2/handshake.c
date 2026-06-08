@@ -20,9 +20,13 @@ void load_conf(const char *filename, uint8_t local_priv[NOISE_PUBLIC_KEY_LEN], u
     size_t len;
 
     while (fgets(line, sizeof(line), fp)) {
+<<<<<<< HEAD
 
         if (sscanf(line, " %63[^= ] = %127s", key, val) == 2) {
             
+=======
+        if (sscanf(line, " %63[^= ] = %127s", key, val) == 2) {
+>>>>>>> 691af0440759cbd1e739365527da34d510a65368
             val[strcspn(val, "\r\n")] = 0;
 
             if (strcasecmp(key, "PrivateKey") == 0) {
