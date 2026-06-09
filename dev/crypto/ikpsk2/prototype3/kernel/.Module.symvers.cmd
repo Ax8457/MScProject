@@ -1,0 +1,1 @@
+cmd_/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/Module.symvers :=  sed 's/ko$$/o/'  /home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/modules.order | scripts/mod/modpost -m      -o /home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/Module.symvers -e -i Module.symvers -T - 

@@ -1,0 +1,6 @@
+0xa467db1f	noise_handshake_create_initiation	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto	EXPORT_SYMBOL	
+0xe1a29ec0	handshake_consume_initiation	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto	EXPORT_SYMBOL	
+0x004d02bf	handshake_create_response	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto	EXPORT_SYMBOL	
+0x9345c8a6	handshake_consume_response	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto	EXPORT_SYMBOL	
+0x39c12ac2	begin_session	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/ikpsk2_crypto	EXPORT_SYMBOL	
+0x6947bd0d	g_bridge	/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/server/noise_server	EXPORT_SYMBOL	
