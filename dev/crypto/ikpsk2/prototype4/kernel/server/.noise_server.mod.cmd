@@ -1,1 +1,0 @@
-cmd_/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/server/noise_server.mod := printf '%s\n'   noise_server.o | awk '!x[$$0]++ { print("/home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/server/"$$0) }' > /home/nfsv4/MScProject/dev/crypto/ikpsk2/prototype3/kernel/server/noise_server.mod
